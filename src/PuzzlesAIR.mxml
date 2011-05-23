@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   creationComplete="initApp()"
+					   width="760" height="600" xmlns:components="components.*" xmlns:models="models.*" xmlns:layouts="layouts.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.facebook.graph.FacebookDesktop;
+			
+			protected function initApp():void {
+				FacebookDesktop.init("215484158478576", loginHandler);
+			}
+			
+			protected function loginHandler(success:Object, fail:Object):void {
+				if(success){
+					currentState = "loggedin";
+				}
+				else {
+					this.login();
+				}
+			}
+
+			protected function login():void {
+				FacebookDesktop.login(loginHandler, ["user_birthday", "read_stream", "publish_stream"]);
+			}
+			
+			protected function logout():void {
+				FacebookDesktop.logout();
+				currentState = "loggedout";
+			}
+
+			
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="loggedout"/>
+		<s:State name="loggedin"/>
+	</s:states>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:Button label="Log in" includeIn="loggedout" right="10" top="10" click="login()" skinClass="skins.FBLoginButtonSkin"/>
+	<s:Button includeIn="loggedin" label="Log out" right="10" top="10" click="logout()" skinClass="skins.FBLogoutButtonSkin"/>
+	
+	
+	<components:Battle includeIn="loggedin" />
+
+
+</s:WindowedApplication>

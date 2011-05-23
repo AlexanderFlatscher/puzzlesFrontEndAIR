@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" gap="0"
+		 creationComplete="creationCompleteHandler(event)"
+		 xmlns:components="components.*" xmlns:models="models.*" xmlns:layouts="layouts.*">
+	<fx:Declarations>
+		<s:HTTPService id="show" url="http://localhost:3000/battles/1.xml" method="GET" result="showResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.XMLListCollection;
+			import mx.events.DragEvent;
+			import mx.events.ItemClickEvent;
+			import mx.managers.DragManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			[Bindable]
+			private var xml:XML;
+			
+			[Bindable]
+			private var myStatus:String;
+			[Bindable]
+			private var myMana:int;
+			[Bindable]
+			private var myHealth:int;
+			
+			[Bindable]
+			private var myDeckXMLListCollection:XMLListCollection;
+			[Bindable]
+			private var myHandXMLListCollection:XMLListCollection;
+			[Bindable]
+			private var myUnitsXMLListCollection:XMLListCollection;
+			[Bindable]
+			private var myInactiveUnitsXMLListCollection:XMLListCollection;
+			[Bindable]
+			private var myAttackingUnitsXMLListCollection:XMLListCollection;
+			[Bindable]
+			private var mySpellsXMLListCollection:XMLListCollection;
+			[Bindable]
+			private var myCemeteryXMLListCollection:XMLListCollection;
+			
+			protected function creationCompleteHandler(e:Event):void{
+				sendShowBattleRequest();
+				
+				deckList.addEventListener(ItemClickEvent.ITEM_CLICK, deckItemClickHandler);
+			}
+			
+			protected function showResultHandler(e:ResultEvent):void
+			{
+				trace("request result");
+				xml = new XML(e.result);
+				myStatus = xml.Fighter[0].attribute("status");
+				myMana = xml.Fighter[0].attribute("mana");
+				myHealth = xml.Fighter[0].attribute("health");
+				
+				myDeckXMLListCollection = new XMLListCollection(xml.Fighter[0].Deck.Card);
+				myHandXMLListCollection = new XMLListCollection(xml.Fighter[0].Hand.Card);
+				myUnitsXMLListCollection = new XMLListCollection(xml.Fighter[0].Units.Card);
+				myInactiveUnitsXMLListCollection = new XMLListCollection(xml.Fighter[0].InactiveUnits.Card);
+				myAttackingUnitsXMLListCollection = new XMLListCollection(xml.Fighter[0].AttackingUnits.Card);
+				mySpellsXMLListCollection = new XMLListCollection(xml.Fighter[0].Spells.Card);
+				myCemeteryXMLListCollection = new XMLListCollection(xml.Fighter[0].Cemetery.Card);
+			}
+			
+			protected function faultHandler(e:FaultEvent):void
+			{
+				trace("fault");
+			}
+			
+			private function deckItemClickHandler(e:ItemClickEvent):void{
+				if(myHandXMLListCollection.length < 5)
+					myHandXMLListCollection.addItem((myDeckXMLListCollection.removeItemAt(e.index)));
+			}
+			
+			private function sendShowBattleRequest():void{
+				trace("request sent");
+				this.show.send();
+			}
+
+			private function unitsDragEnterHandler(e:DragEvent):void
+			{
+				var dragTarget:List = e.currentTarget as List;
+				var dragTargetNumChildren:int = dragTarget.dataProvider.length;
+				
+				var draggedCard:Object = (e.dragInitiator as List).selectedItem;
+				
+				if(draggedCard.type != "Unit" && dragTargetNumChildren == 0 || draggedCard.type != "Spell" && dragTargetNumChildren > 0){ // TODO need to know if spell targets a unit (unit spell, upgrade, buff, ...)
+					e.preventDefault();
+				}
+			}
+			
+			private function spellsDragEnterHandler(e:DragEvent):void
+			{
+				var obj:Object = (e.dragInitiator as List).selectedItem;
+				if(obj.type != "Spell")
+					e.preventDefault();
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:HGroup>
+		<s:Panel title="Units" width="500">
+			
+			
+			<!--
+			<s:List itemRenderer="components.CardItemRenderer"
+					dataProvider="{myUnitsXMLListCollection}"
+					dropEnabled="true" dragEnter="unitsDragEnterHandler(event)"
+					height="100" width="500">
+				
+				<s:layout>
+					<s:HorizontalLayout />
+				</s:layout>
+			</s:List>
+			-->
+			
+			<s:List itemRenderer="components.CardItemRenderer"
+					dataProvider="{new XMLListCollection()}"
+					dropEnabled="true" dragEnter="unitsDragEnterHandler(event)"
+					height="200" width="100">
+				
+				<s:layout>
+					<layouts:OverlapCardsLayout />
+				</s:layout>
+			</s:List>
+		</s:Panel>
+		
+		<s:Panel title="Spells" width="200">
+			<s:List width="200" height="100"
+					dropEnabled="true" dragEnter="spellsDragEnterHandler(event)"
+					itemRenderer="components.CardItemRenderer"
+					dataProvider="{mySpellsXMLListCollection}">
+				
+			</s:List>
+		</s:Panel>
+	</s:HGroup>
+
+	<s:HGroup width="100%">
+		<s:Panel title="Hand" width="500">
+			<s:List id="handList" itemRenderer="components.CardItemRenderer" dataProvider="{myHandXMLListCollection}"
+					dragEnabled="true" dragMoveEnabled="true"
+					height="100" width="500">
+				
+				<s:layout>
+					<s:HorizontalLayout />
+				</s:layout>
+				
+			</s:List>
+		</s:Panel>
+		<s:Panel title="Deck" id="deckList" width="100">
+			<s:List height="100" width="100" itemRenderer="components.CardItemRenderer" dataProvider="{myDeckXMLListCollection}">
+				
+			</s:List>
+		</s:Panel>
+		
+		<s:Panel title="Cemetery" width="100">
+			<s:List height="100" width="100" itemRenderer="components.CardItemRenderer" dataProvider="{myCemeteryXMLListCollection}">
+				
+			</s:List>
+		</s:Panel>
+	</s:HGroup>
+	
+	
+</s:VGroup>

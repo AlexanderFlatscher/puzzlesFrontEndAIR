@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true" creationComplete="creationCompleteHandler(event)" click="itemClickHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import models.CardVO;
+			
+			import mx.collections.XMLListCollection;
+			import mx.events.ItemClickEvent;
+			
+			[Bindable]
+			private var xmlListData:XMLList;
+			
+			private function creationCompleteHandler(e:Event):void{
+				xmlListData = new XMLList(data);
+			}
+			
+			protected function itemClickHandler(e:MouseEvent):void{
+				var itemClickEvent:ItemClickEvent = new ItemClickEvent(ItemClickEvent.ITEM_CLICK, true);
+				itemClickEvent.item = data;
+				itemClickEvent.index = itemIndex;
+				dispatchEvent(itemClickEvent);
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:Rect width="75" height="100">
+		<s:stroke>
+			<s:SolidColorStroke color="#000000" />
+		</s:stroke>
+		<s:fill>
+			<s:SolidColor color="#00ff00" alpha="0.5" />
+		</s:fill>
+	</s:Rect>
+	<s:Label text="{xmlListData.name}"/>
+	
+</s:ItemRenderer>
