@@ -2,7 +2,7 @@
 <s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
 				xmlns:s="library://ns.adobe.com/flex/spark" 
 				xmlns:mx="library://ns.adobe.com/flex/mx" 
-				autoDrawBackground="true" creationComplete="creationCompleteHandler(event)" click="itemClickHandler(event)">
+				autoDrawBackground="true" creationComplete="creationCompleteHandler(event)" click="itemClickHandler(event)" height="100" width="75">
 	<fx:Script>
 		<![CDATA[
 			import models.CardVO;
@@ -10,11 +10,19 @@
 			import mx.collections.XMLListCollection;
 			import mx.events.ItemClickEvent;
 			
-			[Bindable]
-			private var xmlListData:XMLList;
-			
 			private function creationCompleteHandler(e:Event):void{
-				xmlListData = new XMLList(data);
+				
+				trace("data: " + data.image);
+				
+				var loader:Loader = new Loader();
+				loader.contentLoaderInfo.addEventListener(Event.COMPLETE, loaderCompleteHandler);
+				loader.load(new URLRequest("http://localhost:3000" + data.imageURL));
+			}
+			
+			private function loaderCompleteHandler(e:Event):void {
+				var loader:Loader = (e.target as LoaderInfo).loader;
+				//image.source = loader.content;
+				data.image = loader.content;
 			}
 			
 			protected function itemClickHandler(e:MouseEvent):void{
@@ -27,14 +35,26 @@
 		]]>
 	</fx:Script>
 	
+	<s:states>
+		<s:State name="normal" />
+		<s:State name="hovered" />
+		<s:State name="selected" />
+		<s:State name="dragging"/>
+	</s:states>
+	
+	<s:Label text="{data.name}"/>
 	<s:Rect width="75" height="100">
 		<s:stroke>
 			<s:SolidColorStroke color="#000000" />
 		</s:stroke>
-		<s:fill>
-			<s:SolidColor color="#00ff00" alpha="0.5" />
-		</s:fill>
+		<s:fill.dragging>
+			<s:SolidColor color="#00ff00" color.dragging="#ff0000" alpha="0.5" />
+		</s:fill.dragging>
 	</s:Rect>
-	<s:Label text="{xmlListData.name}"/>
+	<!--<mx:Image id="image" width="75" height="150" smoothBitmapContent="true" />-->
+	<s:Graphic>
+		<s:BitmapImage source="{data.image}" id="image" width="75" height="150" alpha.dragging="1.0" visible.dragging="true" />
+	</s:Graphic>
+	
 	
 </s:ItemRenderer>

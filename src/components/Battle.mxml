@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
 		 xmlns:s="library://ns.adobe.com/flex/spark" 
-		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" gap="0"
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"
 		 creationComplete="creationCompleteHandler(event)"
 		 xmlns:components="components.*" xmlns:models="models.*" xmlns:layouts="layouts.*">
 	<fx:Declarations>
-		<s:HTTPService id="show" url="http://localhost:3000/battles/1.xml" method="GET" result="showResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
+		<s:HTTPService id="showBattle" url="http://localhost:3000/battles/1.xml" method="GET" result="showBattleResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
+		<s:HTTPService id="updateCardInGame" url="http://localhost:3000/card_in_games/"  method="POST" result="updateCardInGameResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
 	</fx:Declarations>
 	
 	<fx:Script>
 		<![CDATA[
+			import models.CardVO;
+			
+			import mx.collections.ArrayCollection;
 			import mx.collections.XMLListCollection;
 			import mx.events.DragEvent;
 			import mx.events.ItemClickEvent;
@@ -17,30 +21,30 @@
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
 			
-			[Bindable]
-			private var xml:XML;
-			
+
 			[Bindable]
 			private var myStatus:String;
+			
 			[Bindable]
 			private var myMana:int;
+			
 			[Bindable]
 			private var myHealth:int;
 			
 			[Bindable]
-			private var myDeckXMLListCollection:XMLListCollection;
+			private var myHand:ArrayCollection;
+			
 			[Bindable]
-			private var myHandXMLListCollection:XMLListCollection;
+			private var myDeck:ArrayCollection;
+			
 			[Bindable]
-			private var myUnitsXMLListCollection:XMLListCollection;
+			private var mySpells:ArrayCollection;
+			
 			[Bindable]
-			private var myInactiveUnitsXMLListCollection:XMLListCollection;
+			private var myCemetery:ArrayCollection;
+			
 			[Bindable]
-			private var myAttackingUnitsXMLListCollection:XMLListCollection;
-			[Bindable]
-			private var mySpellsXMLListCollection:XMLListCollection;
-			[Bindable]
-			private var myCemeteryXMLListCollection:XMLListCollection;
+			private var myUnits:ArrayCollection;
 			
 			protected function creationCompleteHandler(e:Event):void{
 				sendShowBattleRequest();
@@ -48,38 +52,84 @@
 				deckList.addEventListener(ItemClickEvent.ITEM_CLICK, deckItemClickHandler);
 			}
 			
-			protected function showResultHandler(e:ResultEvent):void
+			protected function faultHandler(e:FaultEvent):void
+			{
+				trace("fault! statusCode: " + e.statusCode);
+			}
+			
+			private function deckItemClickHandler(e:ItemClickEvent):void{
+				if(myHand.length < 5){
+					myHand.addItem((myDeck.removeItemAt(e.index)));
+					
+					sendUpdateCardInGameRequest(e.item.id, "draw");
+				}
+			}
+			
+			
+			// http requests
+			
+			private function sendShowBattleRequest():void{
+				trace("request sent");
+				this.showBattle.send();
+			}
+			
+			protected function showBattleResultHandler(e:ResultEvent):void
 			{
 				trace("request result");
-				xml = new XML(e.result);
+				var xml:XML = new XML(e.result);
 				myStatus = xml.Fighter[0].attribute("status");
 				myMana = xml.Fighter[0].attribute("mana");
 				myHealth = xml.Fighter[0].attribute("health");
 				
-				myDeckXMLListCollection = new XMLListCollection(xml.Fighter[0].Deck.Card);
-				myHandXMLListCollection = new XMLListCollection(xml.Fighter[0].Hand.Card);
-				myUnitsXMLListCollection = new XMLListCollection(xml.Fighter[0].Units.Card);
-				myInactiveUnitsXMLListCollection = new XMLListCollection(xml.Fighter[0].InactiveUnits.Card);
-				myAttackingUnitsXMLListCollection = new XMLListCollection(xml.Fighter[0].AttackingUnits.Card);
-				mySpellsXMLListCollection = new XMLListCollection(xml.Fighter[0].Spells.Card);
-				myCemeteryXMLListCollection = new XMLListCollection(xml.Fighter[0].Cemetery.Card);
+				var card:XML;
+				
+				myHand = new ArrayCollection();
+				for each(card in xml.Fighter[0].Hand.Card){
+					myHand.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
+				}
+				
+				myDeck = new ArrayCollection();
+				for each(card in xml.Fighter[0].Deck.Card){
+					myDeck.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
+				}
+				
+				myUnits = new ArrayCollection();
+				for each(card in xml.Fighter[0].Units.Card){
+					myUnits.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
+				}
+				
+				mySpells = new ArrayCollection();
+				for each(card in xml.Fighter[0].Spells.Card){
+					mySpells.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
+				}
+				
+				myCemetery = new ArrayCollection();
+				for each(card in xml.Fighter[0].Cemetery.Card){
+					myCemetery.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
+				}
 			}
 			
-			protected function faultHandler(e:FaultEvent):void
+			private function sendUpdateCardInGameRequest(cardID:int, action:String):void{
+				trace("update card in game request sent");
+				updateCardInGame.url += cardID.toString();
+				trace(updateCardInGame.url);
+				updateCardInGame.send({_method: "PUT", event: action});
+				updateCardInGame.url = "http://localhost:3000/card_in_games/";
+			}
+			
+			protected function updateCardInGameResultHandler(e:ResultEvent):void
 			{
-				trace("fault");
-			}
-			
-			private function deckItemClickHandler(e:ItemClickEvent):void{
-				if(myHandXMLListCollection.length < 5)
-					myHandXMLListCollection.addItem((myDeckXMLListCollection.removeItemAt(e.index)));
-			}
-			
-			private function sendShowBattleRequest():void{
-				trace("request sent");
-				this.show.send();
+				trace("update card in game request result");
+				if(e.statusCode == 200)
+					trace("200 ok");
+				else
+					trace("fail: " + e.statusCode);
 			}
 
+			
+			
+			// drag n drop
+			
 			private function unitsDragEnterHandler(e:DragEvent):void
 			{
 				var dragTarget:List = e.currentTarget as List;
@@ -91,6 +141,13 @@
 					e.preventDefault();
 				}
 			}
+
+			protected function unitsDragDropHandler(e:DragEvent):void
+			{
+				var draggedCard:Object = (e.dragInitiator as List).selectedItem;
+				sendUpdateCardInGameRequest(draggedCard.id, "place_unit");
+				// reduce mana
+			}
 			
 			private function spellsDragEnterHandler(e:DragEvent):void
 			{
@@ -98,29 +155,26 @@
 				if(obj.type != "Spell")
 					e.preventDefault();
 			}
+			
+			protected function spellsDragDropHandler(e:DragEvent):void
+			{
+				var draggedCard:Object = (e.dragInitiator as List).selectedItem;
+				sendUpdateCardInGameRequest(draggedCard.id, "cast");
+				// reduce mana
+			}
+
 
 		]]>
 	</fx:Script>
 	
-	<s:HGroup>
-		<s:Panel title="Units" width="500">
-			
-			
-			<!--
+	<s:HGroup width="100%" bottom="200">
+		
+		<s:Rect width="50%" />
+		
+		<s:Panel title="Units" width="500">			
 			<s:List itemRenderer="components.CardItemRenderer"
-					dataProvider="{myUnitsXMLListCollection}"
-					dropEnabled="true" dragEnter="unitsDragEnterHandler(event)"
-					height="100" width="500">
-				
-				<s:layout>
-					<s:HorizontalLayout />
-				</s:layout>
-			</s:List>
-			-->
-			
-			<s:List itemRenderer="components.CardItemRenderer"
-					dataProvider="{new XMLListCollection()}"
-					dropEnabled="true" dragEnter="unitsDragEnterHandler(event)"
+					dataProvider="{new ArrayCollection()}"
+					dropEnabled="true" dragEnter="unitsDragEnterHandler(event)" dragDrop="unitsDragDropHandler(event)"
 					height="200" width="100">
 				
 				<s:layout>
@@ -129,19 +183,32 @@
 			</s:List>
 		</s:Panel>
 		
+		<s:Rect width="50%" />
+
+	</s:HGroup>
+	
+	<s:HGroup gap="0" bottom="430" right="130">
+			
 		<s:Panel title="Spells" width="200">
 			<s:List width="200" height="100"
 					dropEnabled="true" dragEnter="spellsDragEnterHandler(event)"
 					itemRenderer="components.CardItemRenderer"
-					dataProvider="{mySpellsXMLListCollection}">
+					dataProvider="{mySpells}">
 				
 			</s:List>
 		</s:Panel>
-	</s:HGroup>
+		
+		<s:Panel title="Cemetery" width="100" rotation="270">
+			<s:List height="100" width="100" itemRenderer="components.CardItemRenderer" dataProvider="{myCemetery}" />
+		</s:Panel>
+	</s:HGroup>	
 
-	<s:HGroup width="100%">
+	<s:HGroup bottom="0" gap="0" width="100%">
+		
+		<s:Rect width="50%" />
+		
 		<s:Panel title="Hand" width="500">
-			<s:List id="handList" itemRenderer="components.CardItemRenderer" dataProvider="{myHandXMLListCollection}"
+			<s:List id="handList" itemRenderer="components.CardItemRenderer" dataProvider="{myHand}"
 					dragEnabled="true" dragMoveEnabled="true"
 					height="100" width="500">
 				
@@ -151,18 +218,21 @@
 				
 			</s:List>
 		</s:Panel>
-		<s:Panel title="Deck" id="deckList" width="100">
-			<s:List height="100" width="100" itemRenderer="components.CardItemRenderer" dataProvider="{myDeckXMLListCollection}">
-				
-			</s:List>
-		</s:Panel>
 		
-		<s:Panel title="Cemetery" width="100">
-			<s:List height="100" width="100" itemRenderer="components.CardItemRenderer" dataProvider="{myCemeteryXMLListCollection}">
-				
-			</s:List>
-		</s:Panel>
+		<s:Rect width="50%" />
+		
 	</s:HGroup>
+
+	
+	<s:Panel title="Deck" width="100" bottom="0" right="0">
+		<s:List id="deckList" height="100" width="100" itemRenderer="components.CardItemRenderer" dataProvider="{myDeck}">
+			
+			<s:layout>
+				<s:VerticalLayout />
+			</s:layout>
+			
+		</s:List>
+	</s:Panel>
 	
 	
-</s:VGroup>
+</s:Group>
