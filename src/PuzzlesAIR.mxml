@@ -2,66 +2,88 @@
 <s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
 					   xmlns:s="library://ns.adobe.com/flex/spark" 
 					   xmlns:mx="library://ns.adobe.com/flex/mx"
-					   creationComplete="initApp()"
+					   creationComplete="creationCompleteHandler(event)"
 					   width="760" height="865" xmlns:components="components.*" xmlns:models="models.*" xmlns:layouts="layouts.*">
 	
 	<fx:Declarations>
-		<s:HTTPService id="sendFBID" url="http://localhost:3000/login/"  method="POST" result="sendFBIDResultHandler(event)" fault="sendFBIDFaultHandler(event)" />
+		<s:HTTPService id="registerAndLoginUser" url="http://localhost:3000/users/register_and_login"  method="POST" result="registerAndLoginUserResultHandler(event)" fault="registerAndLoginUserFaultHandler(event)" />
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
 			import com.facebook.graph.FacebookDesktop;
 			
+			import events.BattleEvent;
+			
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
 			
-			protected function initApp():void {
+			[Bindable]
+			private var fbid:String;
+			
+			private function creationCompleteHandler(e:Event):void {
 				FacebookDesktop.init("215484158478576", loginHandler);
+				addEventListener(BattleEvent.OPEN_BATTLE, openBattleHandler);
 			}
 			
-			protected function loginHandler(success:Object, fail:Object):void {
+			private function loginHandler(success:Object, fail:Object):void {
 				if(success){
-					currentState = "loggedin";
-					//sendFBID.send({fbid: success.uid});
+					fbid = success.uid
+					sendRegisterAndLoginRequest(fbid);
 				}
 				else {
-					this.login();
+					login();
 				}
 			}
 
-			protected function login():void {
+			private function login():void {
 				FacebookDesktop.login(loginHandler, ["user_birthday", "read_stream", "publish_stream"]);
 			}
 			
-			protected function logout():void {
+			private function logout():void {
 				FacebookDesktop.logout();
 				currentState = "loggedout";
 			}
 			
-			
-			protected function sendFBIDResultHandler(e:ResultEvent):void
-			{
-				// success, load menu, ...
+			private function openBattleHandler(e:BattleEvent):void {
+				trace("open battle handler");
+				currentState = "battle";
+				myBattle.openBattle(e.battleId);
 			}
 			
-			protected function sendFBIDFaultHandler(e:FaultEvent):void
+			
+			
+			// ---- http requests ----------------------------------------------------------------------------
+			
+			private function sendRegisterAndLoginRequest(FBID:String):void {
+				registerAndLoginUser.send({id: FBID});
+			}
+			
+			protected function registerAndLoginUserResultHandler(e:ResultEvent):void
 			{
-				// fault, maybe retry, fault message, ...
+				currentState = "menu";
+			}
+			
+			protected function registerAndLoginUserFaultHandler(e:FaultEvent):void
+			{
+				trace(e.fault.message);
 			}
 
 			
+
 		]]>
 	</fx:Script>
 	
 	<s:states>
 		<s:State name="loggedout"/>
-		<s:State name="loggedin"/>
+		<s:State name="menu" stateGroups="loggedin" />
+		<s:State name="battle" stateGroups="loggedin" />
 	</s:states>
 	<s:Button label="Log in" includeIn="loggedout" right="10" top="10" click="login()" skinClass="skins.FBLoginButtonSkin"/>
 	<s:Button includeIn="loggedin" label="Log out" right="10" top="10" click="logout()" skinClass="skins.FBLogoutButtonSkin"/>
 	
 	
-	<components:Battle includeIn="loggedin" />
+	<components:Menu includeIn="menu" id="myMenu" fbid="{fbid}" />
+	<components:Battle includeIn="battle" id="myBattle" />
 
 
 </s:WindowedApplication>

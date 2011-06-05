@@ -1,19 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
 		 xmlns:s="library://ns.adobe.com/flex/spark" 
-		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300" xmlns:components="components.*">
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300" xmlns:components="components.*" creationComplete="creationCompleteHandler(event)">
 	<fx:Declarations>
 		<s:Elastic id="elasticEasing" />
 		<s:Power id="powerEasing" />
+		
+		<s:HTTPService id="indexBattles" url="http://localhost:3000/battles/" method="GET" result="indexBattlesResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
 	</fx:Declarations>
 	
 	<fx:Script>
 		<![CDATA[
+			import com.facebook.graph.FacebookDesktop;
+			
+			import events.BattleEvent;
+			
 			import mx.effects.easing.Elastic;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
 			
 			import spark.effects.easing.EaseInOutBase;
 			import spark.effects.easing.Elastic;
 			
+			
+			public var fbid:String;
+
+			protected function creationCompleteHandler(e:FlexEvent):void {
+				indexBattles.send({fb_id: fbid, format: 'xml'});
+			}
+			
+			// ---- http requests -------------------------------------------------------------------
+			
+			protected function indexBattlesResultHandler(e:ResultEvent):void {
+				trace("result: " + e.message);
+				
+				var xml:XML = new XML(e.result);
+				
+				for each(var battle:XML in xml.Battle){
+					
+					// should be replaced with a better (server side) solution
+					var myID:int, opponentID:int;
+					
+					if(battle.Fighter[0].fb_id == fbid){
+						myID = 0;
+						opponentID = 1;
+					}
+					else {
+						myID = 1;
+						opponentID = 0;
+					}
+					
+					// add battle menu item to battle section
+					var battleMenuItem:BattleMenuItem = new BattleMenuItem();
+					battleMenuItem.battleID = battle.attribute('id');
+					
+					FacebookDesktop.api('/' + battle.Fighter[opponentID].fb_id, function(success:Object, fail:Object):void{
+						if(success){
+							battleMenuItem.opponentName = success.name;
+						}
+						else {
+							trace(fail);
+						}
+					});
+					
+					battleMenuItem.playerState = battle.Fighter[myID].attribute("status");
+					
+					battlesNavigatorContent.addElement(battleMenuItem);
+				}
+			}
+			
+//			private function fbApiOpponentName(success:Object, fail:Object):void {
+//				
+//				
+//				
+//			}
+			
+			protected function faultHandler(e:FaultEvent):void {
+				trace("fault: " + e.message);
+			}
+			
+
 		]]>
 	</fx:Script>
 	
@@ -42,44 +109,12 @@
 				<s:Move target="{menu}" />
 			</s:Parallel>
 		</s:Transition>
-		<!--<s:Transition fromState="menu" toState="subMenu">
-		<s:Parallel duration="500">
-		<s:Sequence>
-		<s:Move target="{menu}" xBy="20" easer="{powerEasing}" duration="200" />
-		
-		<s:Parallel>
-		<s:Move target="{menu}" xFrom="0" xTo="{-menu.width}" easer="{powerEasing}" />
-		<s:Move target="{subMenu}" xFrom="{this.width}" xTo="-20" easer="{powerEasing}" />						
-		</s:Parallel>
-		<s:Fade target="{subMenu}" alphaFrom="0" alphaTo="1" />
-		
-		<s:Move target="{subMenu}" xFrom="-20" xTo="0" easer="{powerEasing}" duration="200" />
-		</s:Sequence>
-		<s:Fade target="{menu}" alphaFrom="1" alphaTo="0" />
-		</s:Parallel>
-		</s:Transition>
-		
-		<s:Transition fromState="subMenu" toState="menu">
-		<s:Parallel duration="500">
-		<s:Sequence>
-		<s:Move target="{subMenu}" xBy="-20" easer="{powerEasing}" duration="200" />
-		
-		<s:Parallel>
-		<s:Move target="{subMenu}" easer="{powerEasing}" />
-		<s:Move target="{menu}" xTo="20" easer="{powerEasing}" />						
-		</s:Parallel>
-		
-		<s:Move target="{menu}" easer="{powerEasing}" duration="200" />
-		</s:Sequence>
-		<s:Fade target="{menu}" alphaFrom="0" alphaTo="1" />
-		<s:Fade target="{subMenu}" alphaFrom="1" alphaTo="0" />
-		</s:Parallel>
-		</s:Transition>-->
+
 	</s:transitions>
 	
-	<s:Panel title="panel" id="menu" x="0" x.subMenu="{-menu.width}" alpha="1" alpha.subMenu="0">
+	<s:Panel title="Menu" id="menu" x="0" x.subMenu="{-menu.width}" alpha="1" alpha.subMenu="0">
 		<components:HoverAccordion width="500" height="400" resizeToContent="true" openDuration="250">
-			<s:NavigatorContent label="Games">
+			<s:NavigatorContent label="Battles" id="battlesNavigatorContent">
 				<s:layout>
 					<s:VerticalLayout />
 				</s:layout>
@@ -108,33 +143,5 @@
 		<s:Label text="subMenu" />
 		<s:Button label="back" click="currentState='menu'" />
 	</s:Panel>
-	
-	<!--<components:SliderContainer>
-	<components:items>
-	<components:SliderItem buttonLabel="Games">
-	<components:sliderContent>
-	<s:VGroup>
-	<s:Label text="hi dudes!" />
-	</s:VGroup>
-	</components:sliderContent>
-	</components:SliderItem>
-	
-	<components:SliderItem buttonLabel="Decks">
-	<components:sliderContent>
-	<s:VGroup>
-	<s:Label text="look at me :)!" />
-	</s:VGroup>
-	</components:sliderContent>
-	</components:SliderItem>
-	
-	<components:SliderItem buttonLabel="Achievements">
-	<components:sliderContent>
-	<s:VGroup>
-	<s:Label text="i'm here!!" />
-	</s:VGroup>
-	</components:sliderContent>
-	</components:SliderItem>
-	</components:items>
-	</components:SliderContainer>-->
 	
 </s:Group>

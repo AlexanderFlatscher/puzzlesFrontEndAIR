@@ -5,12 +5,14 @@
 		 creationComplete="creationCompleteHandler(event)"
 		 xmlns:components="components.*" xmlns:models="models.*" xmlns:layouts="layouts.*">
 	<fx:Declarations>
-		<s:HTTPService id="showBattle" url="http://localhost:3000/battles/1.xml" method="GET" result="showBattleResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
+		<s:HTTPService id="showBattle" method="GET" result="showBattleResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
 		<s:HTTPService id="updateCardInGame" url="http://localhost:3000/card_in_games/"  method="POST" result="updateCardInGameResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
 	</fx:Declarations>
 	
 	<fx:Script>
 		<![CDATA[
+			import events.BattleEvent;
+			
 			import models.CardVO;
 			
 			import mx.collections.ArrayCollection;
@@ -47,14 +49,11 @@
 			private var myUnits:ArrayCollection;
 			
 			protected function creationCompleteHandler(e:Event):void{
-				sendShowBattleRequest();
-				
 				deckList.addEventListener(ItemClickEvent.ITEM_CLICK, deckItemClickHandler);
 			}
 			
-			protected function faultHandler(e:FaultEvent):void
-			{
-				trace("fault! statusCode: " + e.statusCode);
+			public function openBattle(battleID:int):void {
+				sendShowBattleRequest(battleID);
 			}
 			
 			private function deckItemClickHandler(e:ItemClickEvent):void{
@@ -66,11 +65,17 @@
 			}
 			
 			
-			// http requests
+			// ---- http requests ------------------------------------------------------------------------
 			
-			private function sendShowBattleRequest():void{
-				trace("request sent");
-				this.showBattle.send();
+			protected function faultHandler(e:FaultEvent):void
+			{
+				trace("fault! statusCode: " + e.statusCode);
+			}
+			
+			private function sendShowBattleRequest(battleID:int):void{
+				trace("show battle request sent");
+				showBattle.url = "http://localhost:3000/battles/" + battleID + ".xml";
+				showBattle.send();
 			}
 			
 			protected function showBattleResultHandler(e:ResultEvent):void
@@ -172,7 +177,7 @@
 		<s:Rect width="50%" />
 		
 		<s:Panel title="Units" width="500">			
-			<s:List itemRenderer="components.CardItemRenderer"
+			<s:List itemRenderer="renderers.CardItemRenderer"
 					dataProvider="{new ArrayCollection()}"
 					dropEnabled="true" dragEnter="unitsDragEnterHandler(event)" dragDrop="unitsDragDropHandler(event)"
 					height="200" width="100">
@@ -192,14 +197,14 @@
 		<s:Panel title="Spells" width="200">
 			<s:List width="200" height="100"
 					dropEnabled="true" dragEnter="spellsDragEnterHandler(event)"
-					itemRenderer="components.CardItemRenderer"
+					itemRenderer="renderers.CardItemRenderer"
 					dataProvider="{mySpells}">
 				
 			</s:List>
 		</s:Panel>
 		
 		<s:Panel title="Cemetery" width="100" rotation="270">
-			<s:List height="100" width="100" itemRenderer="components.CardItemRenderer" dataProvider="{myCemetery}" />
+			<s:List height="100" width="100" itemRenderer="renderers.CardItemRenderer" dataProvider="{myCemetery}" />
 		</s:Panel>
 	</s:HGroup>	
 
@@ -208,7 +213,7 @@
 		<s:Rect width="50%" />
 		
 		<s:Panel title="Hand" width="500">
-			<s:List id="handList" itemRenderer="components.CardItemRenderer" dataProvider="{myHand}"
+			<s:List id="handList" itemRenderer="renderers.CardItemRenderer" dataProvider="{myHand}"
 					dragEnabled="true" dragMoveEnabled="true"
 					height="100" width="500">
 				
@@ -225,7 +230,7 @@
 
 	
 	<s:Panel title="Deck" width="100" bottom="0" right="0">
-		<s:List id="deckList" height="100" width="100" itemRenderer="components.CardItemRenderer" dataProvider="{myDeck}">
+		<s:List id="deckList" height="100" width="100" itemRenderer="renderers.CardItemRenderer" dataProvider="{myDeck}">
 			
 			<s:layout>
 				<s:VerticalLayout />

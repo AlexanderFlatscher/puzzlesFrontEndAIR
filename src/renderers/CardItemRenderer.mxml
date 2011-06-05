@@ -11,9 +11,6 @@
 			import mx.events.ItemClickEvent;
 			
 			private function creationCompleteHandler(e:Event):void{
-				
-				trace("data: " + data.image);
-				
 				var loader:Loader = new Loader();
 				loader.contentLoaderInfo.addEventListener(Event.COMPLETE, loaderCompleteHandler);
 				loader.load(new URLRequest("http://localhost:3000" + data.imageURL));
