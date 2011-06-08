@@ -3,7 +3,7 @@
 					   xmlns:s="library://ns.adobe.com/flex/spark" 
 					   xmlns:mx="library://ns.adobe.com/flex/mx"
 					   creationComplete="creationCompleteHandler(event)"
-					   width="760" height="865" xmlns:components="components.*" xmlns:models="models.*" xmlns:layouts="layouts.*">
+					   width="760" height="890" xmlns:components="components.*" xmlns:models="models.*" xmlns:layouts="layouts.*">
 	
 	<fx:Declarations>
 		<s:HTTPService id="registerAndLoginUser" url="http://localhost:3000/users/register_and_login"  method="POST" result="registerAndLoginUserResultHandler(event)" fault="registerAndLoginUserFaultHandler(event)" />
@@ -78,12 +78,13 @@
 		<s:State name="menu" stateGroups="loggedin" />
 		<s:State name="battle" stateGroups="loggedin" />
 	</s:states>
-	<s:Button label="Log in" includeIn="loggedout" right="10" top="10" click="login()" skinClass="skins.FBLoginButtonSkin"/>
-	<s:Button includeIn="loggedin" label="Log out" right="10" top="10" click="logout()" skinClass="skins.FBLogoutButtonSkin"/>
-	
 	
 	<components:Menu includeIn="menu" id="myMenu" fbid="{fbid}" />
 	<components:Battle includeIn="battle" id="myBattle" />
+	
+	<s:Button label="Log in" includeIn="loggedout" right="10" top="10" click="login()" skinClass="skins.FBLoginButtonSkin"/>
+	<s:Button includeIn="loggedin" label="Log out" right="10" top="10" click="logout()" skinClass="skins.FBLogoutButtonSkin"/>
+	
 
 
 </s:WindowedApplication>

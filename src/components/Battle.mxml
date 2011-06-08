@@ -6,63 +6,68 @@
 		 xmlns:components="components.*" xmlns:models="models.*" xmlns:layouts="layouts.*">
 	<fx:Declarations>
 		<s:HTTPService id="showBattle" method="GET" result="showBattleResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
+		<s:HTTPService id="updateFighter"  method="POST" result="updateFightersResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
 		<s:HTTPService id="updateCardInGame" url="http://localhost:3000/card_in_games/"  method="POST" result="updateCardInGameResultHandler(event)" resultFormat="xml" fault="faultHandler(event)" />
 	</fx:Declarations>
 	
 	<fx:Script>
 		<![CDATA[
+			import com.facebook.graph.FacebookDesktop;
+			import com.facebook.graph.data.FacebookSession;
+			
 			import events.BattleEvent;
+			import events.CardEvent;
 			
 			import models.CardVO;
+			import models.FighterVO;
 			
 			import mx.collections.ArrayCollection;
 			import mx.collections.XMLListCollection;
+			import mx.containers.Panel;
+			import mx.core.UIComponent;
 			import mx.events.DragEvent;
 			import mx.events.ItemClickEvent;
 			import mx.managers.DragManager;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
 			
+			import skins.DeckBattleSkin;
+			import skins.GraveyardBattleSkin;
+			import skins.HandBattleSkin;
+			import skins.MagicBattleSkin;
+			
+			
+			private var xml:XML;
+			
+			private var battleID:int;
 
 			[Bindable]
-			private var myStatus:String;
-			
+			private var me:FighterVO = new FighterVO();
 			[Bindable]
-			private var myMana:int;
-			
-			[Bindable]
-			private var myHealth:int;
-			
-			[Bindable]
-			private var myHand:ArrayCollection;
-			
-			[Bindable]
-			private var myDeck:ArrayCollection;
-			
-			[Bindable]
-			private var mySpells:ArrayCollection;
-			
-			[Bindable]
-			private var myCemetery:ArrayCollection;
-			
-			[Bindable]
-			private var myUnits:ArrayCollection;
+			private var opp:FighterVO = new FighterVO();
 			
 			protected function creationCompleteHandler(e:Event):void{
-				deckList.addEventListener(ItemClickEvent.ITEM_CLICK, deckItemClickHandler);
+				addEventListener(CardEvent.CAST_UPGRADE, castUpgradeHandler);
 			}
 			
 			public function openBattle(battleID:int):void {
 				sendShowBattleRequest(battleID);
 			}
 			
-			private function deckItemClickHandler(e:ItemClickEvent):void{
-				if(myHand.length < 5){
-					myHand.addItem((myDeck.removeItemAt(e.index)));
+			private function deckItemClickHandler(e:MouseEvent):void{
+				if(me.handCards.length < 5){
+					var item:Object = me.deckCards.removeItemAt(0);
+					me.handCards.addItem(item);
 					
-					sendUpdateCardInGameRequest(e.item.id, "draw");
+					sendUpdateCardInGameRequest(item.id, "draw");
 				}
 			}
+			
+			private function castUpgradeHandler(e:CardEvent):void {
+				sendUpdateCardInGameRequest(e.card.id, "cast", e.card.targedID);
+				// reduce mana
+			}
+			
 			
 			
 			// ---- http requests ------------------------------------------------------------------------
@@ -80,50 +85,47 @@
 			
 			protected function showBattleResultHandler(e:ResultEvent):void
 			{
-				trace("request result");
-				var xml:XML = new XML(e.result);
-				myStatus = xml.Fighter[0].attribute("status");
-				myMana = xml.Fighter[0].attribute("mana");
-				myHealth = xml.Fighter[0].attribute("health");
+				xml = new XML(e.result);
+				var myIndex:int, oppIndex:int;
 				
-				var card:XML;
-				
-				myHand = new ArrayCollection();
-				for each(card in xml.Fighter[0].Hand.Card){
-					myHand.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
+				if(FacebookDesktop.getSession().uid == xml.Fighter[0].fb_id){
+					myIndex = 0;
+					oppIndex = 1;
+				}
+				else {
+					myIndex = 1;
+					oppIndex = 0;
 				}
 				
-				myDeck = new ArrayCollection();
-				for each(card in xml.Fighter[0].Deck.Card){
-					myDeck.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
-				}
+				me.parseFighter(xml.Fighter[myIndex]);
+				opp.parseFighter(xml.Fighter[oppIndex]);
 				
-				myUnits = new ArrayCollection();
-				for each(card in xml.Fighter[0].Units.Card){
-					myUnits.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
-				}
+				if(me.status == "proceeding")
+					currentState = "proceeding";
 				
-				mySpells = new ArrayCollection();
-				for each(card in xml.Fighter[0].Spells.Card){
-					mySpells.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
-				}
-				
-				myCemetery = new ArrayCollection();
-				for each(card in xml.Fighter[0].Cemetery.Card){
-					myCemetery.addItem(new CardVO(card.id, card.type, card.targetType, card.name, card.image, card.description, card.talent));
-				}
 			}
 			
-			private function sendUpdateCardInGameRequest(cardID:int, action:String):void{
-				trace("update card in game request sent");
-				updateCardInGame.url += cardID.toString();
-				trace(updateCardInGame.url);
-				updateCardInGame.send({_method: "PUT", event: action});
-				updateCardInGame.url = "http://localhost:3000/card_in_games/";
+			private function sendUpdateFighterRequest():void {
+				updateFighter.url = "http://localhost:3000/fighters/" + me.id;
+				updateFighter.send({battle_id: battleID, _method: "put"});
 			}
 			
-			protected function updateCardInGameResultHandler(e:ResultEvent):void
-			{
+			private function updateFightersResultHandler(e:ResultEvent):void {
+				currentState = (currentState == "waiting" ? "proceeding" : "waiting");
+			}
+			
+			private function sendUpdateCardInGameRequest(cardID:int, action:String, targetID:int = -1):void {
+				updateCardInGame.url = "http://localhost:3000/card_in_games/" + cardID.toString();
+				
+				var parameter:Object = {_method: "PUT", event: action};
+				
+				if(targetID > 0)
+					parameter.targetID = targetID;
+				
+				updateCardInGame.send(parameter);
+			}
+			
+			protected function updateCardInGameResultHandler(e:ResultEvent):void {
 				trace("update card in game request result");
 				if(e.statusCode == 200)
 					trace("200 ok");
@@ -137,22 +139,44 @@
 			
 			private function unitsDragEnterHandler(e:DragEvent):void
 			{
-				var dragTarget:List = e.currentTarget as List;
-				var dragTargetNumChildren:int = dragTarget.dataProvider.length;
+				var unitCount:int = 0;
+				for(var i:int = 0; i < me.maxUnitCards; i++){
+					var unitList:List = (e.currentTarget as HGroup).getElementAt(i) as List;
+					if(unitList.dataProvider.length != 0)
+						unitCount++;
+				}
+				trace(unitCount);
+				if(unitCount < me.maxUnitCards)
+					DragManager.acceptDragDrop(e.currentTarget as UIComponent);
+				
+				/*var dragTarget:List = e.currentTarget as List;
+				//var dragTargetNumChildren:int = dragTarget.dataProvider.length;
 				
 				var draggedCard:Object = (e.dragInitiator as List).selectedItem;
 				
-				if(draggedCard.type != "Unit" && dragTargetNumChildren == 0 || draggedCard.type != "Spell" && dragTargetNumChildren > 0){ // TODO need to know if spell targets a unit (unit spell, upgrade, buff, ...)
+				if(draggedCard.type != "Unit" && dragTargetNumChildren == 0 || draggedCard.type != "Spell" /*&& dragTargetNumChildren > 0){ // TODO need to know if spell targets a unit (unit spell, upgrade, buff, ...)
 					e.preventDefault();
-				}
+				}*/
 			}
 
 			protected function unitsDragDropHandler(e:DragEvent):void
 			{
-				var draggedCard:Object = (e.dragInitiator as List).selectedItem;
-				sendUpdateCardInGameRequest(draggedCard.id, "place_unit");
-				// reduce mana
+				var dragInitiator:List = (e.dragInitiator as List);
+				var draggedCard:CardVO = dragInitiator.selectedItem;
+				
+				for(var i:int = 0; i < me.maxUnitCards; i++){
+					var unitList:UnitBattleItem = (e.currentTarget as HGroup).getElementAt(i) as UnitBattleItem;
+					if(unitList.allowToPlaceUnit() && draggedCard.type == "Unit"){
+						unitList.addUnit(draggedCard);
+						dragInitiator.dataProvider.removeItemAt(dragInitiator.selectedIndex);
+							
+						sendUpdateCardInGameRequest(draggedCard.id, "place_unit");
+						// reduce mana
+						break;
+					}
+				}
 			}
+			
 			
 			private function spellsDragEnterHandler(e:DragEvent):void
 			{
@@ -168,76 +192,145 @@
 				// reduce mana
 			}
 
+			protected function handCardsGroupMouseOverHandler(e:MouseEvent):void
+			{
+				handCardsGroup.bottom = 0;
+			}
+			
+			protected function handCardsGroupMouseOutHandler(e:MouseEvent):void
+			{
+				handCardsGroup.bottom = -197;
+			}
 
 		]]>
 	</fx:Script>
 	
-	<s:HGroup width="100%" bottom="200">
-		
-		<s:Rect width="50%" />
-		
-		<s:Panel title="Units" width="500">			
-			<s:List itemRenderer="renderers.CardItemRenderer"
-					dataProvider="{new ArrayCollection()}"
-					dropEnabled="true" dragEnter="unitsDragEnterHandler(event)" dragDrop="unitsDragDropHandler(event)"
-					height="200" width="100">
-				
-				<s:layout>
-					<layouts:OverlapCardsLayout />
-				</s:layout>
-			</s:List>
-		</s:Panel>
-		
-		<s:Rect width="50%" />
-
-	</s:HGroup>
+	<s:states>
+		<s:State name="waiting" />
+		<s:State name="proceeding" />
+	</s:states>
 	
-	<s:HGroup gap="0" bottom="430" right="130">
-			
-		<s:Panel title="Spells" width="200">
-			<s:List width="200" height="100"
-					dropEnabled="true" dragEnter="spellsDragEnterHandler(event)"
-					itemRenderer="renderers.CardItemRenderer"
-					dataProvider="{mySpells}">
-				
-			</s:List>
-		</s:Panel>
+	<mx:Image source="@Embed(source='assets/images/battle/battle-bg.png')" width="100%" height="100%" />
 		
-		<s:Panel title="Cemetery" width="100" rotation="270">
-			<s:List height="100" width="100" itemRenderer="renderers.CardItemRenderer" dataProvider="{myCemetery}" />
-		</s:Panel>
-	</s:HGroup>	
-
-	<s:HGroup bottom="0" gap="0" width="100%">
-		
-		<s:Rect width="50%" />
-		
-		<s:Panel title="Hand" width="500">
-			<s:List id="handList" itemRenderer="renderers.CardItemRenderer" dataProvider="{myHand}"
-					dragEnabled="true" dragMoveEnabled="true"
-					height="100" width="500">
-				
-				<s:layout>
-					<s:HorizontalLayout />
-				</s:layout>
-				
-			</s:List>
-		</s:Panel>
-		
-		<s:Rect width="50%" />
-		
-	</s:HGroup>
-
-	
-	<s:Panel title="Deck" width="100" bottom="0" right="0">
-		<s:List id="deckList" height="100" width="100" itemRenderer="renderers.CardItemRenderer" dataProvider="{myDeck}">
+	<!--<s:Panel title="Opponent Units" width="540">
+		<s:layout>
+			<s:HorizontalLayout />
+		</s:layout>
+		<s:List itemRenderer="renderers.CardItemRenderer"
+				dataProvider="{me.unitCards.getItemAt(0) as ArrayCollection}"
+				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
+				height="200" width="100">
 			
 			<s:layout>
-				<s:VerticalLayout />
+				<layouts:OverlapCardsLayout />
+			</s:layout>
+		</s:List>
+		<s:List itemRenderer="renderers.CardItemRenderer"
+				dataProvider="{me.unitCards.getItemAt(1) as ArrayCollection}"
+				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
+				height="200" width="100">
+			
+			<s:layout>
+				<layouts:OverlapCardsLayout />
+			</s:layout>
+		</s:List>
+		<s:List itemRenderer="renderers.CardItemRenderer"
+				dataProvider="{me.unitCards.getItemAt(2) as ArrayCollection}"
+				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
+				height="200" width="100">
+			
+			<s:layout>
+				<layouts:OverlapCardsLayout />
+			</s:layout>
+		</s:List>
+		<s:List itemRenderer="renderers.CardItemRenderer"
+				dataProvider="{me.unitCards.getItemAt(3) as ArrayCollection}"
+				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
+				height="200" width="100">
+			
+			<s:layout>
+				<layouts:OverlapCardsLayout />
+			</s:layout>
+		</s:List>
+		<s:List itemRenderer="renderers.CardItemRenderer"
+				dataProvider="{me.unitCards.getItemAt(4) as ArrayCollection}"
+				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
+				height="200" width="100">
+			
+			<s:layout>
+				<layouts:OverlapCardsLayout />
+			</s:layout>
+		</s:List>
+	</s:Panel>-->
+			
+	<s:HGroup gap="11" bottom="142" left="65" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)">
+		
+		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(0) as ArrayCollection}" battleState="{currentState}" />
+		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(1) as ArrayCollection}" battleState="{currentState}" />
+		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(2) as ArrayCollection}" battleState="{currentState}" />
+		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(3) as ArrayCollection}" battleState="{currentState}" />
+		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(4) as ArrayCollection}" battleState="{currentState}" />					
+		
+	</s:HGroup>
+	
+	<s:List height="176" width="118"
+			bottom="383" right="142"
+			dropEnabled.proceeding="true"
+			dragEnter.proceeding="spellsDragEnterHandler(event)"
+			skinClass="skins.MagicBattleSkin"
+			itemRenderer="renderers.CardItemRenderer"
+			dataProvider="{me.spellCards}">
+		
+		<s:layout>
+			<layouts:FullOverlapCardsLayout />
+		</s:layout>
+	</s:List>
+	
+	<s:List	height="85" width="59"
+			bottom="480" right="13"
+			skinClass="skins.DeckBattleSkin"
+			itemRenderer="renderers.DeckCardItemRenderer"
+			dataProvider="{me.deckCards}"
+			click.proceeding="deckItemClickHandler(event)">
+		
+		<s:layout>
+			<layouts:FullOverlapCardsLayout />
+		</s:layout>
+	</s:List>
+	
+	
+	<s:List height="76" width="113"
+			bottom="387" right="21"
+			itemRenderer="renderers.GraveyardCardItemRenderer"
+			dataProvider="{me.cemetryCards}"
+			skinClass="skins.GraveyardBattleSkin">
+		
+		<s:layout>
+			<layouts:FullOverlapCardsLayout />
+		</s:layout>
+	</s:List>
+	
+	
+	<s:VGroup>
+		<s:Label text="{}" />
+		<s:Label text="{'Mana: ' + me.mana + ' Health: ' + me.health}" />
+		<s:Label text="{'Status: ' + currentState}" />
+	
+		
+		<s:Button label.waiting="grab turn" label.proceeding="end turn" click="sendUpdateFighterRequest()" />
+	</s:VGroup>
+	
+	<s:HGroup id="handCardsGroup" width="100%" gap="0" bottom="-197" mouseOver="handCardsGroupMouseOverHandler(event)" mouseOut="handCardsGroupMouseOutHandler(event)">
+		<s:Rect width="50%" />
+		<s:List bottom="-150" itemRenderer="renderers.HandCardItemRenderer" dataProvider="{me.handCards}" skinClass="skins.HandBattleSkin"
+				dragEnabled.proceeding="true" dragMoveEnabled.proceeding="true">
+			
+			<s:layout>
+				<s:HorizontalLayout gap="5" />
 			</s:layout>
 			
 		</s:List>
-	</s:Panel>
-	
-	
+		<s:Rect width="50%" />
+	</s:HGroup>
+		
 </s:Group>

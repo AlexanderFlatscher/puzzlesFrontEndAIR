@@ -4,11 +4,11 @@ package layouts
 	
 	import spark.layouts.supportClasses.LayoutBase;
 	
-	public class OverlapCardsLayout extends LayoutBase
+	public class FullOverlapCardsLayout extends LayoutBase
 	{
 		public var overlap:int = 20;
 		
-		public function OverlapCardsLayout()
+		public function FullOverlapCardsLayout()
 		{
 			super();
 		}
@@ -21,7 +21,7 @@ package layouts
 				var element:ILayoutElement = (useVirtualLayout ? target.getVirtualElementAt(i) : target.getElementAt(i));
 				
 				element.setLayoutBoundsSize(NaN, NaN);
-				element.setLayoutBoundsPosition(0, i * overlap);
+				element.setLayoutBoundsPosition(0, 0);
 				
 			}
 		}

@@ -8,6 +8,7 @@ package models
 	public class CardVO extends EventDispatcher
 	{
 		public var id:int;
+		public var targedID:int;
 		public var type:String;
 		public var targetType:String;
 		public var name:String;

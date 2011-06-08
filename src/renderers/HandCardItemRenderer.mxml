@@ -2,7 +2,7 @@
 <s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
 				xmlns:s="library://ns.adobe.com/flex/spark" 
 				xmlns:mx="library://ns.adobe.com/flex/mx" 
-				autoDrawBackground="false" creationComplete="creationCompleteHandler(event)" click="itemClickHandler(event)" height="169" width="113">
+				autoDrawBackground="false" creationComplete="creationCompleteHandler(event)" click="itemClickHandler(event)" height="207" width="142">
 	<fx:Script>
 		<![CDATA[
 			import models.CardVO;
@@ -28,7 +28,7 @@
 				itemClickEvent.index = itemIndex;
 				dispatchEvent(itemClickEvent);
 			}
-
+			
 		]]>
 	</fx:Script>
 	
@@ -40,8 +40,8 @@
 	</s:states>
 	
 	<s:Label text="{data.id + ' ' + data.name}"/>
-
-	<s:Graphic>
+	
+	<s:Graphic alpha.dragging="1.0">
 		<s:BitmapImage source="{data.image}" id="image" width="{this.width}" height="{this.height}" smooth="true" />
 	</s:Graphic>
 	

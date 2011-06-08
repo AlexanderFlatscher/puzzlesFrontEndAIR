@@ -32,5 +32,5 @@
 		<s:Label text="{playerState}" />
 	</s:HGroup>
 	
-	<s:Button label="open battle" click="dispatchEvent(new BattleEvent(battleID, BattleEvent.OPEN_BATTLE, true))" />
+	<s:Button label="open battle" click="dispatchEvent(new BattleEvent(BattleEvent.OPEN_BATTLE, battleID, true))" />
 </s:VGroup>
