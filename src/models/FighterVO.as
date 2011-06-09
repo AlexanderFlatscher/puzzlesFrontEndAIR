@@ -41,9 +41,11 @@ package models
 		}
 		
 		public function parseFighter(xml:XML):void {
+			
+			id = xml.attribute("id");
 			mana = xml.attribute("mana");
 			health = xml.attribute("health");
-			status = xml.attribute("status");
+			status = xml.attribute("state");
 			
 			parseHandCards(xml);
 			parseDeckCards(xml);

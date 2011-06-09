@@ -48,6 +48,11 @@
 			
 			protected function creationCompleteHandler(e:Event):void{
 				addEventListener(CardEvent.CAST_UPGRADE, castUpgradeHandler);
+				addEventListener(CardEvent.ENLARGE, enlargeCardHandler);
+			}
+			
+			protected function enlargeCardHandler(e:CardEvent):void {
+				showBigCard(e.card);
 			}
 			
 			public function openBattle(battleID:int):void {
@@ -66,6 +71,16 @@
 			private function castUpgradeHandler(e:CardEvent):void {
 				sendUpdateCardInGameRequest(e.card.id, "cast", e.card.targedID);
 				// reduce mana
+			}
+			
+			private function showBigCard(card:CardVO):void {
+				bigCard.card = card;
+				bigCard.visible = true;
+			}
+			
+			private function hideBigCard():void {
+				bigCard.visible = false;
+				bigCard.card = null;
 			}
 			
 			
@@ -96,6 +111,8 @@
 					myIndex = 1;
 					oppIndex = 0;
 				}
+				
+				battleID = xml.attribute("id");
 				
 				me.parseFighter(xml.Fighter[myIndex]);
 				opp.parseFighter(xml.Fighter[oppIndex]);
@@ -137,35 +154,52 @@
 			
 			// drag n drop
 			
-			private function unitsDragEnterHandler(e:DragEvent):void
+			private function oppUnitsDragEnterHandler(e:DragEvent):void
 			{
-				var unitCount:int = 0;
-				for(var i:int = 0; i < me.maxUnitCards; i++){
-					var unitList:List = (e.currentTarget as HGroup).getElementAt(i) as List;
-					if(unitList.dataProvider.length != 0)
-						unitCount++;
-				}
-				trace(unitCount);
-				if(unitCount < me.maxUnitCards)
+				var dragInitiator:List = (e.dragInitiator as List);
+				var draggedCard:CardVO = dragInitiator.selectedItem;
+				
+				if(draggedCard.type == "Unit")
 					DragManager.acceptDragDrop(e.currentTarget as UIComponent);
-				
-				/*var dragTarget:List = e.currentTarget as List;
-				//var dragTargetNumChildren:int = dragTarget.dataProvider.length;
-				
-				var draggedCard:Object = (e.dragInitiator as List).selectedItem;
-				
-				if(draggedCard.type != "Unit" && dragTargetNumChildren == 0 || draggedCard.type != "Spell" /*&& dragTargetNumChildren > 0){ // TODO need to know if spell targets a unit (unit spell, upgrade, buff, ...)
-					e.preventDefault();
-				}*/
 			}
 
-			protected function unitsDragDropHandler(e:DragEvent):void
+			protected function oppUnitsDragDropHandler(e:DragEvent):void
+			{
+				var dragInitiator:List = (e.dragInitiator as List);
+				var draggedCard:CardVO = dragInitiator.selectedItem;
+				
+				draggedCard.state = "attacking";
+				dragInitiator.selectedItem.currentState = "attacking";
+				sendUpdateCardInGameRequest(draggedCard.id, "attack");
+			}
+			
+			private function myUnitsDragEnterHandler(e:DragEvent):void
+			{
+				var dragInitiator:List = (e.dragInitiator as List);
+				var draggedCard:CardVO = dragInitiator.selectedItem;
+				
+				if(draggedCard.type == "Unit"){
+				
+					var unitCount:int = 0;
+					for(var i:int = 0; i < me.maxUnitCards; i++){
+						var unitList:MyUnitBattleItem = (e.currentTarget as HGroup).getElementAt(i) as MyUnitBattleItem;
+						if(unitList.dataProvider.length != 0)
+							unitCount++;
+					}
+					trace(unitCount);
+					if(unitCount < me.maxUnitCards)
+						DragManager.acceptDragDrop(e.currentTarget as UIComponent);
+				}
+
+			}
+
+			protected function myUnitsDragDropHandler(e:DragEvent):void
 			{
 				var dragInitiator:List = (e.dragInitiator as List);
 				var draggedCard:CardVO = dragInitiator.selectedItem;
 				
 				for(var i:int = 0; i < me.maxUnitCards; i++){
-					var unitList:UnitBattleItem = (e.currentTarget as HGroup).getElementAt(i) as UnitBattleItem;
+					var unitList:MyUnitBattleItem = (e.currentTarget as HGroup).getElementAt(i) as MyUnitBattleItem;
 					if(unitList.allowToPlaceUnit() && draggedCard.type == "Unit"){
 						unitList.addUnit(draggedCard);
 						dragInitiator.dataProvider.removeItemAt(dragInitiator.selectedIndex);
@@ -211,65 +245,25 @@
 	</s:states>
 	
 	<mx:Image source="@Embed(source='assets/images/battle/battle-bg.png')" width="100%" height="100%" />
+	
+			
+	<s:HGroup gap="11" top="16" left="65" dragEnter.proceeding="oppUnitsDragEnterHandler(event)" dragDrop.proceeding="oppUnitsDragDropHandler(event)">
 		
-	<!--<s:Panel title="Opponent Units" width="540">
-		<s:layout>
-			<s:HorizontalLayout />
-		</s:layout>
-		<s:List itemRenderer="renderers.CardItemRenderer"
-				dataProvider="{me.unitCards.getItemAt(0) as ArrayCollection}"
-				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
-				height="200" width="100">
-			
-			<s:layout>
-				<layouts:OverlapCardsLayout />
-			</s:layout>
-		</s:List>
-		<s:List itemRenderer="renderers.CardItemRenderer"
-				dataProvider="{me.unitCards.getItemAt(1) as ArrayCollection}"
-				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
-				height="200" width="100">
-			
-			<s:layout>
-				<layouts:OverlapCardsLayout />
-			</s:layout>
-		</s:List>
-		<s:List itemRenderer="renderers.CardItemRenderer"
-				dataProvider="{me.unitCards.getItemAt(2) as ArrayCollection}"
-				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
-				height="200" width="100">
-			
-			<s:layout>
-				<layouts:OverlapCardsLayout />
-			</s:layout>
-		</s:List>
-		<s:List itemRenderer="renderers.CardItemRenderer"
-				dataProvider="{me.unitCards.getItemAt(3) as ArrayCollection}"
-				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
-				height="200" width="100">
-			
-			<s:layout>
-				<layouts:OverlapCardsLayout />
-			</s:layout>
-		</s:List>
-		<s:List itemRenderer="renderers.CardItemRenderer"
-				dataProvider="{me.unitCards.getItemAt(4) as ArrayCollection}"
-				dropEnabled.proceeding="true" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)"
-				height="200" width="100">
-			
-			<s:layout>
-				<layouts:OverlapCardsLayout />
-			</s:layout>
-		</s:List>
-	</s:Panel>-->
-			
-	<s:HGroup gap="11" bottom="142" left="65" dragEnter.proceeding="unitsDragEnterHandler(event)" dragDrop.proceeding="unitsDragDropHandler(event)">
+		<components:UnitBattleItem dataProvider="{opp.unitCards.getItemAt(0) as ArrayCollection}" battleState="{currentState}" />
+		<components:UnitBattleItem dataProvider="{opp.unitCards.getItemAt(1) as ArrayCollection}" battleState="{currentState}" />
+		<components:UnitBattleItem dataProvider="{opp.unitCards.getItemAt(2) as ArrayCollection}" battleState="{currentState}" />
+		<components:UnitBattleItem dataProvider="{opp.unitCards.getItemAt(3) as ArrayCollection}" battleState="{currentState}" />
+		<components:UnitBattleItem dataProvider="{opp.unitCards.getItemAt(4) as ArrayCollection}" battleState="{currentState}" />			
 		
-		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(0) as ArrayCollection}" battleState="{currentState}" />
-		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(1) as ArrayCollection}" battleState="{currentState}" />
-		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(2) as ArrayCollection}" battleState="{currentState}" />
-		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(3) as ArrayCollection}" battleState="{currentState}" />
-		<components:UnitBattleItem dataProvider="{me.unitCards.getItemAt(4) as ArrayCollection}" battleState="{currentState}" />					
+	</s:HGroup>
+			
+	<s:HGroup gap="11" bottom="142" left="65" dragEnter.proceeding="myUnitsDragEnterHandler(event)" dragDrop.proceeding="myUnitsDragDropHandler(event)">
+		
+		<components:MyUnitBattleItem dataProvider="{me.unitCards.getItemAt(0) as ArrayCollection}" battleState="{currentState}" />
+		<components:MyUnitBattleItem dataProvider="{me.unitCards.getItemAt(1) as ArrayCollection}" battleState="{currentState}" />
+		<components:MyUnitBattleItem dataProvider="{me.unitCards.getItemAt(2) as ArrayCollection}" battleState="{currentState}" />
+		<components:MyUnitBattleItem dataProvider="{me.unitCards.getItemAt(3) as ArrayCollection}" battleState="{currentState}" />
+		<components:MyUnitBattleItem dataProvider="{me.unitCards.getItemAt(4) as ArrayCollection}" battleState="{currentState}" />					
 		
 	</s:HGroup>
 	
@@ -277,6 +271,7 @@
 			bottom="383" right="142"
 			dropEnabled.proceeding="true"
 			dragEnter.proceeding="spellsDragEnterHandler(event)"
+			dragDrop.proceeding="spellsDragDropHandler(event)"
 			skinClass="skins.MagicBattleSkin"
 			itemRenderer="renderers.CardItemRenderer"
 			dataProvider="{me.spellCards}">
@@ -332,5 +327,7 @@
 		</s:List>
 		<s:Rect width="50%" />
 	</s:HGroup>
+	
+	<components:BigCardBattleItem id="bigCard" visible="false" />
 		
 </s:Group>

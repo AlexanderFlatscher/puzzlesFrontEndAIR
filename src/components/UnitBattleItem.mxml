@@ -5,9 +5,6 @@
 		xmlns:layouts="layouts.*"
 		width="118" height="231"
 		itemRenderer="renderers.CardItemRenderer"
-		dragEnabled="{(battleState == 'proceeding' ? true : false)}"
-		dragDrop.filled="dragDropHandler(event)"
-		dragEnter.filled="dragEnterHandler(event)"
 		skinClass="skins.UnitBattleItemSkin">
 	
 	<s:layout>
@@ -68,30 +65,6 @@
 					return false
 			}
 			
-			
-			// ---- drag n drop -------------------------------------------------------------------
-			
-			override protected function dragDropHandler(e:DragEvent):void {
-				var dragInitiator:List = (e.dragInitiator as List);
-				var draggedCard:CardVO = dragInitiator.selectedItem;
-				
-				if(addUpgrade(draggedCard)){
-					dragInitiator.dataProvider.removeItemAt(dragInitiator.selectedIndex);
-					draggedCard.targedID = (dataProvider.getItemAt(0) as CardVO).id;
-					dispatchEvent(new CardEvent(CardEvent.CAST_UPGRADE, draggedCard, true));
-				}
-			}
-			
-			override protected function dragEnterHandler(e:DragEvent):void {
-				if(battleState != "proceeding")
-					return;
-				
-				var dragInitiator:List = (e.dragInitiator as List);
-				var draggedCard:CardVO = dragInitiator.selectedItem;
-				
-				if(allowToPlaceUnit() && draggedCard.type == "Unit" || allowToPlaceUpgrade() && draggedCard.type == "Upgrade")
-					DragManager.acceptDragDrop(e.currentTarget as UIComponent);
-			}
 
 		]]>
 	</fx:Script>

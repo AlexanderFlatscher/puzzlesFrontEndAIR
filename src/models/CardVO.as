@@ -16,8 +16,9 @@ package models
 		public var image:Bitmap;
 		public var description:String;
 		public var talent:String;
+		public var state:String;
 		
-		public function CardVO(id:int = 0, type:String = "", targetType:String = "", name:String = "", imageURL:String = "", description:String = "", talent:String = "", iEventDispatcherTarget:IEventDispatcher=null)
+		public function CardVO(id:int = 0, type:String = "", targetType:String = "", name:String = "", imageURL:String = "", description:String = "", talent:String = "", state:String = "", iEventDispatcherTarget:IEventDispatcher=null)
 		{
 			super(iEventDispatcherTarget);
 			this.id = id;
@@ -27,6 +28,7 @@ package models
 			this.imageURL = imageURL;
 			this.description = description;
 			this.talent = talent;
+			this.state = state;
 		}
 	}
 }

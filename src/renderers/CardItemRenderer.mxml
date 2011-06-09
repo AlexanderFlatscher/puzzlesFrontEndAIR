@@ -28,6 +28,7 @@
 				itemClickEvent.index = itemIndex;
 				dispatchEvent(itemClickEvent);
 			}
+			
 
 		]]>
 	</fx:Script>
@@ -36,10 +37,12 @@
 		<s:State name="normal" />
 		<s:State name="hovered" />
 		<s:State name="selected" />
-		<s:State name="dragging"/>
+		<s:State name="dragging" />
+		
 	</s:states>
 	
 	<s:Label text="{data.id + ' ' + data.name}"/>
+	
 
 	<s:Graphic>
 		<s:BitmapImage source="{data.image}" id="image" width="{this.width}" height="{this.height}" smooth="true" />

@@ -8,6 +8,7 @@ package events
 	{
 		
 		public static var CAST_UPGRADE:String = "cast upgrade";
+		public static var ENLARGE:String = "enlarge";
 		
 		public var card:CardVO;		
 		public function CardEvent(type:String, card:CardVO, bubbles:Boolean=false, cancelable:Boolean=false)
